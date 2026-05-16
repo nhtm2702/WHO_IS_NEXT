@@ -8,9 +8,29 @@ import random
 import torch
 import torch.backends.cudnn as cudnn
 import datetime
+from sklearn.metrics import log_loss, accuracy_score
 
 import warnings
 warnings.filterwarnings("ignore")
+
+now = datetime.datetime.now()
+timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# File handler
+file_handler = logging.FileHandler("/opt/kcutp/mbh_ui/active_learning/Category_Aware_DA/log/example_" + timestamp + ".log",  mode='w')
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+# Console handler
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(message)s'))
+
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+    
+logger.info("Session started")
 
 def train_and_eval(train_x, train_y, val_x, val_y, one_idx, C):
     model = LogisticRegression(C)
@@ -88,6 +108,7 @@ def active_learning(train_x, train_y, val_x, val_y, one):
     src_acc.append(model.model.score(train_x[one_train], train_y[one_train]))
     
     n = int(val_x.shape[0]*0.01)
+    # n = 10
 
     pred_ones = (model.model.predict(val_x)==1).astype(int)
     one_ratio = 1.0 
@@ -117,7 +138,7 @@ def active_learning(train_x, train_y, val_x, val_y, one):
     
     selected_idx = []
     
-    for i in range(2, 6): 
+    for i in range(80): 
         src_infl, pred_infl, tar_infl = infl_pred(model, train_x_new, val_x_new, train_y_new, val_y_new, valid_x, valid_y, weights=weight_BAL)
         q_idxs = np.argpartition(tar_infl, -n)[-n:]
         selected_idx.append(q_idxs)
@@ -154,61 +175,46 @@ def active_learning(train_x, train_y, val_x, val_y, one):
     n_t_l = sel_y_train.shape[0]
     weight_BAL = np.r_[np.ones(Ns), Ns/n_t_l*np.ones(n_t_l)]
 
-    aa, sa, fa, model = retrain_model(train_x_o, train_y_o, val_x, val_y, one_idx, C, weights=weight_BAL)
-    src_acc.append(model.model.score(train_x[one_train], train_y[one_train]))
-    pred_o = model.model.predict(val_x[one_idx])
-    label_o = val_y[one_idx]
+    # aa, sa, fa, model = retrain_model(train_x_o, train_y_o, val_x, val_y, one_idx, C, weights=weight_BAL)
+    # src_acc.append(model.model.score(train_x[one_train], train_y[one_train]))
+    # pred_o = model.model.predict(val_x[one_idx])
+    # label_o = val_y[one_idx]
 
-    sel_y_train = train_y_new[-n*5:]
-    sel_x_train = train_x_new[-n*5:]
+    # sel_y_train = train_y_new[-n*5:]
+    # sel_x_train = train_x_new[-n*5:]
 
-    ori_y_train = train_y_new[:-n*5]
-    ori_x_train = train_x_new[:-n*5]
+    # ori_y_train = train_y_new[:-n*5]
+    # ori_x_train = train_x_new[:-n*5]
 
-    sel_none = sel_y_train==1
-    sel_y_train = sel_y_train[sel_none]
-    sel_x_train = sel_x_train[sel_none]
+    # sel_none = sel_y_train==1
+    # sel_y_train = sel_y_train[sel_none]
+    # sel_x_train = sel_x_train[sel_none]
 
-    train_x_1 = np.concatenate((ori_x_train, sel_x_train))
-    train_y_1 = np.concatenate((ori_y_train, sel_y_train))
+    # train_x_1 = np.concatenate((ori_x_train, sel_x_train))
+    # train_y_1 = np.concatenate((ori_y_train, sel_y_train))
 
-    n_t_l = sel_y_train.shape[0]
-    weight_BAL = np.r_[np.ones(Ns), Ns/n_t_l*np.ones(n_t_l)]
+    # n_t_l = sel_y_train.shape[0]
+    # weight_BAL = np.r_[np.ones(Ns), Ns/n_t_l*np.ones(n_t_l)]
 
-    aa, sa, fa, model = retrain_model(train_x_1, train_y_1, val_x, val_y, one_idx, C, weights=weight_BAL)
-    src_acc.append(model.model.score(train_x[one_train], train_y[one_train]))
-    pred_1 = model.model.predict(val_x[one_idx])
-    label_1 = val_y[one_idx]
+    # aa, sa, fa, model = retrain_model(train_x_1, train_y_1, val_x, val_y, one_idx, C, weights=weight_BAL)
+    # src_acc.append(model.model.score(train_x[one_train], train_y[one_train]))
+    # pred_1 = model.model.predict(val_x[one_idx])
+    # label_1 = val_y[one_idx]
     
     # return src_acc, acc, ori_one, acc_one, f1, ori_pred, pred, label, selected_labels, pred_o, label_o, pred_1, label_1
     return src_acc, acc, ori_one, acc_one, f1, ori_pred, pred, label, selected_labels, selected_idx
 
 if __name__ == "__main__":
     
-    now = datetime.datetime.now()
-    timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-
-    # File handler
-    file_handler = logging.FileHandler("/opt/kcutp/mbh_ui/active_learning/Category_Aware_DA/log/example_" + timestamp + ".log",  mode='w')
-    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-
-    # Console handler
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(logging.Formatter('%(message)s'))
-
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
-    
-    logger.info("Session started")
-    
-    tsk = 'Ar2Cl' # 'Ar2Cl'
+    tsk = 'OfficeHome/Ar2Pr' # 'Ar2Cl'
     np.random.seed(0)
-    # random.seed(0)
-    # torch.manual_seed(0)
-    # cudnn.deterministic = True
+    random.seed(0)
+    torch.manual_seed(0)
+    torch.cuda.manual_seed(0)
+    torch.cuda.manual_seed_all(0)
+
+    cudnn.deterministic = True
+    cudnn.benchmark = False
 
 
     train_x = np.load('./data_repr/'+tsk+'/source_emb.npy')
@@ -226,7 +232,7 @@ if __name__ == "__main__":
 
     start = time.time()
 
-    for j in range(65):
+    for j in range(2, 3):
         src_acc, acc, ori_one, acc_one, f1, ori_pred, pred, label, lbs, idxs = active_learning(train_x, train_y, val_x, val_y, j)
         ori_ones.append(ori_one)
         acc_ones.append(acc_one)
@@ -239,9 +245,12 @@ if __name__ == "__main__":
             preds = pred
             labels = label
         else:
-            ori_preds = np.concatenate((ori_preds, ori_pred))
-            preds = np.concatenate((preds, pred))
-            labels = np.concatenate((labels, label))
+            # ori_preds = np.concatenate((ori_preds, ori_pred))
+            # preds = np.concatenate((preds, pred))
+            # labels = np.concatenate((labels, label))
+            ori_preds = ori_pred
+            preds = pred
+            labels = label
 
         logging.info(f"Domain adaptation for class {j} successful")
         logging.info("Original accuracy %4f - Adaptation accuracy %4f", (ori_pred == label).sum() / len(ori_pred), (pred == label).sum() / len(pred))

@@ -199,7 +199,12 @@ class LogisticRegression(IFBaseClass):
             reg_loss = np.sum(np.power(self.weight, 2)) * self.l2_reg / 2.
             train_loss_w_reg = train_loss_wo_reg + reg_loss
 
-            print("Train loss: %.5f + %.5f = %.5f" % (train_loss_wo_reg, reg_loss, train_loss_w_reg))
+            # print("Train loss: %.5f + %.5f = %.5f" % (train_loss_wo_reg, reg_loss, train_loss_w_reg))
+            print("train_loss_wo_reg:", train_loss_wo_reg)
+            print("weight_norm_squared:", np.sum(np.power(self.weight, 2)))
+            print("l2_reg:", self.l2_reg)
+            print("reg_loss:", reg_loss)
+            print("train_loss_w_reg:", train_loss_w_reg)
 
         return
 
