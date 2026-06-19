@@ -22,7 +22,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # File handler
-file_handler = logging.FileHandler("/opt/kcutp/mbh_ui/active_learning/Category_Aware_DA/log/" + tsk + "/herding_" + timestamp + ".log",  mode='w')
+file_handler = logging.FileHandler("./log/" + tsk + "/herding_" + timestamp + ".log",  mode='w')
 file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 
 # Console handler
@@ -38,13 +38,6 @@ logger.info("Session started")
 def train_and_eval(train_x, train_y, val_x, val_y, one_idx, C):
     model = LogisticRegression(C)
     model.fit(train_x, train_y)
-    
-    # #print loss for ablation study
-    # logger.info(f"Len train_x: {len(train_x)}")
-    # val_prob = model.model.predict(val_x)
-    # valid_loss_wo_reg = log_loss(val_y, val_prob)
-    # logger.info(f"Valid accuracy: {model.model.score(val_x[one_idx], val_y[one_idx])}")
-    # logger.info(f"Valid loss: {valid_loss_wo_reg}")
     
     return model.model.score(val_x, val_y), model.model.score(val_x[one_idx], val_y[one_idx]), f1_score(model.model.predict(val_x), val_y, average='binary'), model
 
@@ -64,13 +57,6 @@ def update_datasets(train_x, val_x, train_y, val_y, q_idxs):
 def retrain_model(train_x_new, train_y_new, val_x, val_y, one_idx, C, weights=None):
     model = LogisticRegression(C)
     model.fit(train_x_new, train_y_new, sample_weight=weights)
-    
-    # #print loss for ablation study
-    # logger.info(f"Len train_x_new: {len(train_x_new)}")
-    # val_prob = model.model.predict(val_x)
-    # valid_loss_wo_reg = log_loss(val_y, val_prob)
-    # logger.info(f"Valid accuracy: {model.model.score(val_x[one_idx], val_y[one_idx])}")
-    # logger.info(f"Valid loss: {valid_loss_wo_reg}")
     
     return model.model.score(val_x, val_y), model.model.score(val_x[one_idx], val_y[one_idx]), f1_score(model.model.predict(val_x), val_y, average='binary'), model
 
@@ -120,7 +106,6 @@ def herding(model, train_x_new, val_x_new, train_y_new, batch_size=2048, budget=
     uncertainties = uncertainty(prob)
     uncertainties[:len(pos_x)] = 0.
     uncertainties = uncertainties.reshape(1, -1)
-    # uncertainties = torch.ones((1, len(all_x_t)))
     
     # scores for target pool
     k_all = kernel.compute_kernel(all_x_t, all_x_t, batch_size=batch_size)
@@ -142,15 +127,8 @@ def herding(model, train_x_new, val_x_new, train_y_new, batch_size=2048, budget=
         selected.append(selected_index.item())
 
         max_embedding = updated_max_embedding[selected_index].unsqueeze(0) + max_embedding
-        # print("Done one selection with time:", time.time() - start)
 
     selected = [(x-pos_x.shape[0]) for x in selected]
-    # tar_score = k_tar_pos.mean(dim=1)
-    # # tar_score = k_tar_pos.mean(dim=1) - lambda_neg * k_tar_neg.mean(dim=1)
-    
-    # prob_pos = model.model.predict_proba(val_x_new)[:, 1]
-    # # final_score = alpha * tar_score + (1.0 - alpha) * prob_pos
-    # final_score = k_la.mean(dim=1)
     return torch.tensor(selected)
     
 def active_learning(train_x, train_y, val_x, val_y, one):
@@ -241,33 +219,6 @@ def active_learning(train_x, train_y, val_x, val_y, one):
     n_t_l = sel_y_train.shape[0]
     weight_BAL = np.r_[np.ones(Ns), Ns/n_t_l*np.ones(n_t_l)]
 
-    # aa, sa, fa, model = retrain_model(train_x_o, train_y_o, val_x, val_y, one_idx, C, weights=weight_BAL)
-    # src_acc.append(model.model.score(train_x[one_train], train_y[one_train]))
-    # pred_o = model.model.predict(val_x[one_idx])
-    # label_o = val_y[one_idx]
-
-    # sel_y_train = train_y_new[-n*5:]
-    # sel_x_train = train_x_new[-n*5:]
-
-    # ori_y_train = train_y_new[:-n*5]
-    # ori_x_train = train_x_new[:-n*5]
-
-    # sel_none = sel_y_train==1
-    # sel_y_train = sel_y_train[sel_none]
-    # sel_x_train = sel_x_train[sel_none]
-
-    # train_x_1 = np.concatenate((ori_x_train, sel_x_train))
-    # train_y_1 = np.concatenate((ori_y_train, sel_y_train))
-
-    # n_t_l = sel_y_train.shape[0]
-    # weight_BAL = np.r_[np.ones(Ns), Ns/n_t_l*np.ones(n_t_l)]
-
-    # aa, sa, fa, model = retrain_model(train_x_1, train_y_1, val_x, val_y, one_idx, C, weights=weight_BAL)
-    # src_acc.append(model.model.score(train_x[one_train], train_y[one_train]))
-    # pred_1 = model.model.predict(val_x[one_idx])
-    # label_1 = val_y[one_idx]
-    
-    # return src_acc, acc, ori_one, acc_one, f1, ori_pred, pred, label, selected_labels, pred_o, label_o, pred_1, label_1
     return src_acc, acc, ori_one, acc_one, f1, ori_pred, pred, label, selected_labels, selected_idx
 
 if __name__ == "__main__":
@@ -318,7 +269,7 @@ if __name__ == "__main__":
         logging.info(f"Domain adaptation for class {j} successful")
         logging.info("Original accuracy %4f - Adaptation accuracy %4f", (ori_pred == label).sum() / len(ori_pred), (pred == label).sum() / len(pred))
 
-    np.save("/opt/kcutp/mbh_ui/active_learning/Category_Aware_DA/log/" + tsk + "/herding_selected_idxs_" + timestamp + ".npy", selected_idxs)
+    np.save("./log/" + tsk + "/herding_selected_idxs_" + timestamp + ".npy", selected_idxs)
     logging.info("same start 1.0: %s", tsk)
     logging.info("Original accuracy %4f - Adaptation accuracy %4f", (ori_preds == labels).sum() / len(preds), (preds == labels).sum() / len(preds))
     logging.info("Total time: %4f", time.time()-start)
